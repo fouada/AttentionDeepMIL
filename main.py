@@ -105,6 +105,37 @@ def train(epoch):
 
     print('Epoch: {}, Loss: {:.4f}, Train error: {:.4f}'.format(epoch, train_loss.cpu().numpy()[0], train_error))
 
+import matplotlib.pyplot as plt
+
+def plot_mnist_attention(images, attn_weights, bag_level):
+    """
+    Plots MNIST data samples with their corresponding attention weights.
+
+    Parameters:
+    - images: numpy array of shape (N, 1, 28, 28), the data samples.
+    - attn_weights: numpy array of shape (N,), the attention weights.
+    """
+    num_images = images.shape[0]
+    num_cols = 4
+    num_rows = (num_images + num_cols - 1) // num_cols  # Calculate the number of rows needed
+
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(12, 3 * num_rows))
+    fig.suptitle('MNIST Data Samples with Attention Weights', fontsize=16)
+    fig.text(0.5, 0.04, 'Bag Label: {}, Predicted Label: {}'.format(*bag_level), ha='center', fontsize=14)
+
+    for idx in range(num_images):
+        ax = axes.flatten()[idx]
+        ax.imshow(images[idx][0], cmap='gray', aspect='auto')  # Show the image
+        ax.set_title(f'a_{idx}={attn_weights[idx]:.3f}', fontsize=12)  # Set the title with attention weight
+        ax.axis('off')  # Turn off the axis
+
+    # Turn off any remaining empty subplots
+    for idx in range(num_images, num_rows * num_cols):
+        axes.flatten()[idx].axis('off')
+
+    # Adding a global xlabel and ylabel
+    plt.subplots_adjust(top=0.88, bottom=0.1, left=0.1, right=0.9, hspace=0.4, wspace=0.4)
+    plt.show()
 
 def test():
     model.eval()
@@ -123,13 +154,16 @@ def test():
             error, predicted_label = model.calculate_classification_error(data, bag_label)
             test_error += error
 
-            if batch_idx < 5:  # plot bag labels and instance labels for first 5 bags
+            if batch_idx < 15:  # plot bag labels and instance labels for first 5 bags
                 bag_level = (bag_label.cpu().data.numpy()[0], int(predicted_label.cpu().data.numpy()[0][0]))
                 instance_level = list(zip(instance_labels.numpy()[0].tolist(),
                                     np.round(attention_weights.cpu().data.numpy()[0], decimals=3).tolist()))
 
-                print('\nTrue Bag Label, Predicted Bag Label: {}\n'
-                    'True Instance Labels, Attention Weights: {}'.format(bag_level, instance_level))
+                print('\nGT Bag Label, Predicted Bag Label: {}\n'
+                    'GT Instance Labels, Attention Weights: {}'.format(bag_level, instance_level))
+            if batch_idx in (0, 9, 8, 14):
+                plot_mnist_attention(data.cpu().numpy()[0], attention_weights.cpu().numpy()[0], bag_level)
+
 
     test_error /= len(test_loader)
     test_loss /= len(test_loader)
